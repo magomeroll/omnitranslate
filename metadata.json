@@ -1,0 +1,7 @@
+{
+  "name": "OmniTranslate Live",
+  "description": "Real-time AI interpreter for in-person meetings. Bi-directional translation with optional split-channel audio routing.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
