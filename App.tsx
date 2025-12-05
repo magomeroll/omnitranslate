@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Mic, MicOff, Play, Square, Headphones, Activity, Globe, MessageSquare, AlertCircle, RefreshCw, ChevronLeft, Lock, Key, ArrowRight } from 'lucide-react';
+import { Settings, Mic, MicOff, Play, Square, Headphones, Activity, Globe, MessageSquare, AlertCircle, RefreshCw, ChevronLeft, Lock, Key, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Language, SessionConfig, MessageLog } from './types';
 import { useLiveTranslator } from './hooks/useLiveTranslator';
 import { Visualizer } from './components/Visualizer';
@@ -22,6 +22,9 @@ const App: React.FC = () => {
   });
   const [logs, setLogs] = useState<MessageLog[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Check for system keys in various environment formats
+  const systemApiKey = process.env.API_KEY || process.env.VITE_API_KEY || process.env.REACT_APP_API_KEY;
 
   // Load API Key from local storage if available
   useEffect(() => {
@@ -157,24 +160,34 @@ const App: React.FC = () => {
           <div className="space-y-6">
             {/* API Key Input */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase text-slate-500 flex items-center gap-2">
-                <Key className="w-3 h-3" />
-                Gemini API Key
-              </label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-semibold uppercase text-slate-500 flex items-center gap-2">
+                  <Key className="w-3 h-3" />
+                  Gemini API Key
+                </label>
+                {systemApiKey && (
+                  <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                    <ShieldCheck className="w-3 h-3" />
+                    System Key Detected
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <input 
                   type="password"
                   value={userApiKey}
                   onChange={handleApiKeyChange}
-                  placeholder="Paste your API key here..."
+                  placeholder={systemApiKey ? "Using system key (optional override)..." : "Paste your API key here..."}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-4 pr-10 py-3 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
                 />
                 <div className="absolute right-3 top-3 text-slate-600">
-                  {userApiKey ? <div className="w-2 h-2 rounded-full bg-green-500"></div> : <div className="w-2 h-2 rounded-full bg-slate-700"></div>}
+                  {(userApiKey || systemApiKey) ? <div className="w-2 h-2 rounded-full bg-green-500"></div> : <div className="w-2 h-2 rounded-full bg-slate-700"></div>}
                 </div>
               </div>
               <p className="text-[10px] text-slate-500">
-                Your key is stored locally in your browser.
+                {systemApiKey 
+                  ? "A secure key is provided by the server. You can override it if needed." 
+                  : "Your key is stored locally in your browser."}
               </p>
             </div>
 
@@ -233,7 +246,7 @@ const App: React.FC = () => {
 
             <button
               onClick={handleStartSession}
-              disabled={!userApiKey && !process.env.API_KEY}
+              disabled={!userApiKey && !systemApiKey}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Play className="w-5 h-5 fill-current" />
