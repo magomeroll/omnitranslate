@@ -83,11 +83,8 @@ export const useLiveTranslator = ({
     setIsMuted(false);
     isMutedRef.current = false;
 
-    // Use passed apiKey or fallback to various env var standards
-    const activeKey = apiKey || 
-                      process.env.API_KEY || 
-                      process.env.VITE_API_KEY || 
-                      process.env.REACT_APP_API_KEY;
+    // Simplified Key Logic: Use manual input OR standard env var
+    const activeKey = apiKey || process.env.API_KEY;
 
     if (!activeKey) {
       setErrorMessage("API Key is missing. Please enter your key in settings.");
