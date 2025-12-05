@@ -1,11 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Mic, MicOff, Play, Square, Headphones, Activity, Globe, MessageSquare, AlertCircle, RefreshCw, ChevronLeft } from 'lucide-react';
+import { Settings, Mic, MicOff, Play, Square, Headphones, Activity, Globe, MessageSquare, AlertCircle, RefreshCw, ChevronLeft, Lock, Key, ArrowRight } from 'lucide-react';
 import { Language, SessionConfig, MessageLog } from './types';
 import { useLiveTranslator } from './hooks/useLiveTranslator';
 import { Visualizer } from './components/Visualizer';
 
+const PIN_CODE = "6841";
+
 const App: React.FC = () => {
-  const [hasKey, setHasKey] = useState(false);
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [authError, setAuthError] = useState(false);
+
+  // App Config State
+  const [userApiKey, setUserApiKey] = useState("");
   const [isSetup, setIsSetup] = useState(true);
   const [config, setConfig] = useState<SessionConfig>({
     languageA: Language.ITALIAN,
@@ -15,12 +23,30 @@ const App: React.FC = () => {
   const [logs, setLogs] = useState<MessageLog[]>([]);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  // Check for API Key on mount
+  // Load API Key from local storage if available
   useEffect(() => {
-    if (process.env.API_KEY) {
-      setHasKey(true);
+    const storedKey = localStorage.getItem('gemini_api_key');
+    if (storedKey) {
+      setUserApiKey(storedKey);
     }
   }, []);
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === PIN_CODE) {
+      setIsAuthenticated(true);
+      setAuthError(false);
+    } else {
+      setAuthError(true);
+      setPinInput("");
+    }
+  };
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setUserApiKey(newVal);
+    localStorage.setItem('gemini_api_key', newVal);
+  };
 
   const handleTranscription = (text: string, isUser: boolean) => {
     setLogs(prev => [...prev, {
@@ -43,7 +69,8 @@ const App: React.FC = () => {
     languageA: config.languageA,
     languageB: config.languageB,
     splitAudio: config.splitAudio,
-    onTranscription: handleTranscription
+    onTranscription: handleTranscription,
+    apiKey: userApiKey
   });
 
   useEffect(() => {
@@ -68,7 +95,45 @@ const App: React.FC = () => {
     connect();
   };
 
-  // Setup Screen
+  // 1. PIN Authentication Screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 text-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
+        
+        <div className="max-w-xs w-full bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl z-10 flex flex-col items-center">
+          <div className="p-4 bg-slate-800 rounded-full mb-6">
+            <Lock className="w-8 h-8 text-blue-500" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">OmniTranslate Safe</h2>
+          <p className="text-slate-400 text-sm mb-6 text-center">Enter access PIN to continue</p>
+          
+          <form onSubmit={handlePinSubmit} className="w-full space-y-4">
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              className={`w-full bg-slate-950 border ${authError ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-3 text-center text-2xl tracking-widest text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all`}
+              placeholder="••••"
+              autoFocus
+            />
+            {authError && <p className="text-red-400 text-xs text-center">Incorrect PIN code</p>}
+            
+            <button 
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              Unlock <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Configuration & Setup Screen
   if (isSetup) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 text-white relative overflow-hidden">
@@ -89,14 +154,32 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {!hasKey && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200 text-sm flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <p>Missing API Key. Please add your Gemini API Key to the environment variables to continue.</p>
-            </div>
-          )}
-
           <div className="space-y-6">
+            {/* API Key Input */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-slate-500 flex items-center gap-2">
+                <Key className="w-3 h-3" />
+                Gemini API Key
+              </label>
+              <div className="relative">
+                <input 
+                  type="password"
+                  value={userApiKey}
+                  onChange={handleApiKeyChange}
+                  placeholder="Paste your API key here..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-4 pr-10 py-3 text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
+                />
+                <div className="absolute right-3 top-3 text-slate-600">
+                  {userApiKey ? <div className="w-2 h-2 rounded-full bg-green-500"></div> : <div className="w-2 h-2 rounded-full bg-slate-700"></div>}
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-500">
+                Your key is stored locally in your browser.
+              </p>
+            </div>
+
+            <div className="h-px bg-slate-800 my-4"></div>
+
             {/* Person A Language */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -150,7 +233,7 @@ const App: React.FC = () => {
 
             <button
               onClick={handleStartSession}
-              disabled={!hasKey}
+              disabled={!userApiKey && !process.env.API_KEY}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Play className="w-5 h-5 fill-current" />
@@ -162,7 +245,7 @@ const App: React.FC = () => {
     );
   }
 
-  // Active Session Screen
+  // 3. Active Session Screen
   return (
     <div className="h-screen bg-slate-950 flex flex-col relative overflow-hidden text-white">
       {/* Dynamic Background */}

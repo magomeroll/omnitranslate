@@ -8,13 +8,15 @@ interface UseLiveTranslatorProps {
   languageB: Language;
   splitAudio: boolean;
   onTranscription: (text: string, isUser: boolean) => void;
+  apiKey: string; // New prop for manual key entry
 }
 
 export const useLiveTranslator = ({
   languageA,
   languageB,
   splitAudio,
-  onTranscription
+  onTranscription,
+  apiKey
 }: UseLiveTranslatorProps) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,8 +83,11 @@ export const useLiveTranslator = ({
     setIsMuted(false);
     isMutedRef.current = false;
 
-    if (!process.env.API_KEY) {
-      setErrorMessage("API Key is missing from environment.");
+    // Use passed apiKey or fallback to env
+    const activeKey = apiKey || process.env.API_KEY;
+
+    if (!activeKey) {
+      setErrorMessage("API Key is missing. Please enter your key in settings.");
       setConnectionState('error');
       return;
     }
@@ -126,7 +131,7 @@ export const useLiveTranslator = ({
         }
       }, 15000); // 15 second timeout
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: activeKey });
       
       // Initialize Audio Contexts
       // Output Context (24kHz for Gemini output)
@@ -265,7 +270,7 @@ export const useLiveTranslator = ({
             console.log("Session Closed");
             if (!isConnectedRef.current) {
                 // If it closed and we never marked it as connected, it's an immediate failure
-                setErrorMessage("Connection failed immediately. Please check your network or API key.");
+                setErrorMessage("Connection failed immediately. Please check your network or API Key.");
                 setConnectionState('error');
             } else {
                 setConnectionState('disconnected');
@@ -289,7 +294,7 @@ export const useLiveTranslator = ({
       setConnectionState('error');
       isConnectedRef.current = false;
     }
-  }, [languageA, languageB, splitAudio, onTranscription]); // Removed isMuted from deps
+  }, [languageA, languageB, splitAudio, onTranscription, apiKey]); // Added apiKey to deps
 
   const disconnect = useCallback(() => {
     cleanup();
